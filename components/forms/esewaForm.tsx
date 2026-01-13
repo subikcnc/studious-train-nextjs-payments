@@ -48,7 +48,7 @@ const EsewaForm = () => {
   };
   return (
     <Button variant="outline" onClick={() => handleSubmit()}>
-      Button
+      Pay with Esewa
     </Button>
   );
 };
