@@ -14,7 +14,7 @@ const EsewaForm = () => {
         body: JSON.stringify({
           amount: "500",
           total_amount: "500",
-          transaction_uuid: "txn_0004",
+          transaction_uuid: "txn_0006",
           product_code: "EPAYTEST",
           tax_amount: "0",
           product_service_charge: "0",
