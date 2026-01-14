@@ -1,3 +1,4 @@
+import Chat from "@/components/chat/chat";
 import EsewaForm from "@/components/forms/esewaForm";
 import HblForm from "@/components/forms/hblForm";
 import KhaltiForm from "@/components/forms/khaltiForm";
@@ -8,6 +9,7 @@ export default function Home() {
       <EsewaForm />
       <KhaltiForm />
       <HblForm />
+      <Chat />
     </div>
   );
 }
