@@ -16,7 +16,7 @@ const KhaltiForm = () => {
           return_url: "http://localhost:3000/khalti-success",
           website_url: "http://localhost:3000",
           amount: 15500, // Amount is in paisa
-          purchase_order_id: "txn003",
+          purchase_order_id: "txn009",
           purchase_order_name: "Skechers key chain",
           customer_info: {
             name: "Khalti Bahadur",
