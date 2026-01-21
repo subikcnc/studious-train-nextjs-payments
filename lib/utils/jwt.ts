@@ -1,5 +1,5 @@
-import { SignJWT } from "jose";
-import jwt from "jsonwebtoken";
+import { SignJWT, jwtVerify } from "jose";
+// import jwt from "jsonwebtoken";
 import { createSecretKey } from "node:crypto"; // saying node:crypto means to import crypto from node
 
 export interface JwtPayload {
@@ -8,9 +8,13 @@ export interface JwtPayload {
   username: string;
 }
 
-export const verifyToken = (token: string) => {
+export const verifyToken = async (token: string) => {
   try {
+    const secretKey = new TextEncoder().encode(process.env.JWT_SECRET!); // This converts the string secret into a Uint8Array which jose requires for HS256
+    const { payload } = await jwtVerify(token, secretKey);
+    return payload;
   } catch (error) {
+    console.error("Error verifying token", error);
     throw new Error("Invalid token");
   }
 };

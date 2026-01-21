@@ -28,7 +28,7 @@ export async function POST(request: Request) {
       email: account.email,
       username: account.name,
     });
-    return NextResponse.json(
+    const response = NextResponse.json(
       {
         message: "Login successful",
         account,
@@ -36,8 +36,18 @@ export async function POST(request: Request) {
       },
       { status: 200 },
     );
+    response.cookies.set({
+      name: "accountToken",
+      value: token,
+      httpOnly: true,
+      // secure: process.env.NODE_ENV === "production", only send over HTTPS
+      sameSite: "lax",
+      maxAge: 60 * 60 * 24 * 7,
+      path: "/",
+    });
+    return response;
   } catch (error) {
     console.error("Login failed", error);
-    NextResponse.json({ error: "Login failed" }, { status: 500 });
+    return NextResponse.json({ error: "Login failed" }, { status: 500 });
   }
 }

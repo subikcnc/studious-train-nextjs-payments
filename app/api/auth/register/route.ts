@@ -44,7 +44,7 @@ export async function POST(request: Request) {
       email: account.email,
       username: account.name,
     });
-    return NextResponse.json(
+    const response = NextResponse.json(
       {
         message: "User created successfully",
         account,
@@ -52,8 +52,18 @@ export async function POST(request: Request) {
       },
       { status: 201 },
     );
+
+    response.cookies.set({
+      name: "accountToken",
+      value: token,
+      httpOnly: true,
+      sameSite: "lax",
+      maxAge: 60 * 60 * 24 * 7,
+      path: "/",
+    });
+    return response;
   } catch (error) {
     console.error("Registration failed", error);
-    NextResponse.json({ error: "Registration failed" }, { status: 500 });
+    return NextResponse.json({ error: "Registration failed" }, { status: 500 });
   }
 }
