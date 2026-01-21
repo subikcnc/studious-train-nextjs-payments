@@ -28,16 +28,17 @@ export const conversations = pgTable("conversations", {
   id: uuid("id").primaryKey().defaultRandom(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
+  lastMessagedAt: timestamp("lastMessagedAt"),
 });
 
 export const conversationParticipants = pgTable("conversation_participants", {
   id: uuid("id").primaryKey().defaultRandom(),
   conversationId: uuid("conversationId")
     .references(() => conversations.id, { onDelete: "cascade" })
-    .notNull(),
+    .notNull(), // This is the actual constraint
   accountId: uuid("accountId")
     .references(() => accounts.id, { onDelete: "cascade" })
-    .notNull(),
+    .notNull(), // This is the actual constraint
 });
 
 export const messages = pgTable("messages", {
@@ -49,6 +50,20 @@ export const messages = pgTable("messages", {
     .references(() => accounts.id, { onDelete: "cascade" })
     .notNull(),
   content: text("content").notNull(),
+  isRead: boolean("isRead").notNull().default(false),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });
+
+export const accountRelations = relations(accounts, ({ many }) => ({
+  conversationParticipants: many(conversationParticipants),
+  messages: many(messages),
+}));
+
+export const conversationsRelations = relations(conversations, ({ many }) => ({
+  conversationParticipants: many(conversationParticipants),
+  messages: many(messages),
+}));
+
+export const insertAccountSchema = createInsertSchema(accounts);
+export const selectAccountSchema = createSelectSchema(accounts);

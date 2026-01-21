@@ -1,9 +1,7 @@
-import Chat from "@/components/chat/chat";
-
 const ChatPage = () => {
   return (
     <div className="flex h-screen w-full justify-center items-center flex-col">
-      <Chat />
+      <h1>This is the chat page</h1>
     </div>
   );
 };
