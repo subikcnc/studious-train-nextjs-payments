@@ -51,6 +51,7 @@ const KhaltiForm = () => {
       //   We assume everything goes     right so we proceed
       console.log(data);
       const { pidx, payment_url } = data;
+
       router.push(payment_url);
     } catch (error) {
       console.error("Error occured when making payment", error);

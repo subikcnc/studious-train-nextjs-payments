@@ -1,7 +1,10 @@
+import { getUser } from "@/lib/actions/user.action";
 import { cookies } from "next/headers";
 
 const ChatPage = async () => {
-  const cookieStore = await cookies();
+  const response = await getUser();
+  const data = await response.json();
+  console.log("response in chat", data);
   // const token = cookieStore.get("accountToken")?.value;
   try {
     // const payload = await verifyToken()
