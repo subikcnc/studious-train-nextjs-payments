@@ -1,19 +1,15 @@
-import { getUser } from "@/lib/actions/user.action";
-import { cookies } from "next/headers";
+import ChatList from "@/components/chat/chatList";
+import { getAllUsers, getUser } from "@/lib/actions/user.action";
 
 const ChatPage = async () => {
   const response = await getUser();
+  const usersResponse = await getAllUsers();
+  const allUsers = await usersResponse.json();
   const data = await response.json();
   console.log("response in chat", data);
-  // const token = cookieStore.get("accountToken")?.value;
-  try {
-    // const payload = await verifyToken()
-  } catch (error) {
-    // throw new Error("Invalid token", error);
-  }
   return (
-    <div className="flex h-screen w-full justify-center items-center flex-col">
-      <h1>Client</h1>
+    <div className="container mx-auto py-8">
+      <ChatList loggedInUser={data} users={allUsers} />{" "}
     </div>
   );
 };

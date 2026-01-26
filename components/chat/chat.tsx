@@ -24,7 +24,7 @@ export default function Chat() {
       function (data: { username: string; message: string }) {
         // new-message is the event client listens to
         setMessages((prev) => [...prev, data]);
-      }
+      },
     );
 
     return () => {

@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { Button } from "../ui/button";
+import Link from "next/link";
 
 const RegisterForm = () => {
   const [name, setName] = useState("");
@@ -84,13 +85,23 @@ const RegisterForm = () => {
     }
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem("accountToken");
-    setToken("");
+  const handleLogout = async () => {
+    try {
+      await fetch("/api/auth/logout", {
+        method: "POST",
+      });
+      localStorage.removeItem("accountToken");
+      setToken("");
+    } catch (error) {
+      console.error("Logout failed", error);
+    }
   };
   return token && token.length > 0 ? (
     <div className="flex w-full h-screen items-center justify-center flex-col">
       <Button onClick={handleLogout}>Log out</Button>
+      <Button asChild>
+        <Link href="/chat">Chat</Link>
+      </Button>
     </div>
   ) : (
     <div className="flex w-full h-screen items-center justify-center">
