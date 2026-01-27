@@ -6,13 +6,14 @@ export interface JwtPayload {
   id: string;
   email: string;
   username: string;
+  [key: string]: unknown;
 }
 
 export const verifyToken = async (token: string) => {
   try {
     const secretKey = new TextEncoder().encode(process.env.JWT_SECRET!); // This converts the string secret into a Uint8Array which jose requires for HS256
     const { payload } = await jwtVerify(token, secretKey);
-    return payload;
+    return payload as unknown as JwtPayload;
   } catch (error) {
     console.error("Error verifying token", error);
     throw new Error("Invalid token");

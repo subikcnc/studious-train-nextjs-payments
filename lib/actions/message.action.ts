@@ -7,8 +7,7 @@ import {
   conversations,
   messages,
 } from "@/db/schema";
-import { eq } from "drizzle-orm";
-import { NextResponse } from "next/server";
+import { desc, eq } from "drizzle-orm";
 
 export async function createMessage() {}
 
@@ -17,17 +16,17 @@ export async function getMessages(conversationId: string) {
     const storedMessages = await db
       .select()
       .from(messages)
-      .where(eq(messages.conversationId, conversationId));
+      .where(eq(messages.conversationId, conversationId))
+      .limit(10)
+      .orderBy(desc(messages.createdAt));
 
     if (!storedMessages) throw new Error("No messages found");
 
-    return NextResponse.json(storedMessages, { status: 200 });
+    // Send all the messages back to the client based on what the conversation id is
+    return JSON.parse(JSON.stringify(storedMessages));
   } catch (error) {
-    return NextResponse.json(
-      {
-        error: error instanceof Error ? error.message : "Internal server error",
-      },
-      { status: 500 },
+    throw new Error(
+      error instanceof Error ? error.message : "Internal server error",
     );
   }
 }
@@ -81,7 +80,29 @@ export async function sendMessage({
       participantSender.length > 0
     ) {
       console.log("no need to create a new conversation");
-      // They have already conversed before
+      // They have already conversed before so need to get the conversation id from the conversation participants table
+      const conversationId = participantSender[0].conversationId;
+      const [insertedMessage] = await db
+        .insert(messages)
+        .values({
+          content,
+          conversationId,
+          accountId: sender[0].id,
+        })
+        .returning({
+          id: messages.id,
+        });
+      console.log("Inserted message is", insertedMessage);
+      // Need to get all the messages from the conversation
+      const allMessages = await db
+        .select()
+        .from(messages)
+        .where(eq(messages.conversationId, conversationId));
+      console.log("Messages are", allMessages);
+      return {
+        message: "Message sent successfully",
+        conversationId: conversationId,
+      };
     } else {
       console.log("Creating a new conversation");
       // This is their first conversation
@@ -113,9 +134,10 @@ export async function sendMessage({
           id: messages.id,
         });
 
-      return NextResponse.json({
-        message: "Message sent successfully",
-      });
+      return {
+        conversationId: JSON.parse(JSON.stringify(conversation.id)),
+        message: "New Message sent successfully",
+      };
 
       //   await db.insert(conversationParticipants).values({});
     }
@@ -125,11 +147,8 @@ export async function sendMessage({
     //   .from(conversations)
     //   .where(eq(conversations.id, conversationId));
   } catch (error) {
-    return NextResponse.json(
-      {
-        error: error instanceof Error ? error.message : "Internal server error",
-      },
-      { status: 500 },
+    throw new Error(
+      error instanceof Error ? error.message : "Internal server error",
     );
   }
 }
