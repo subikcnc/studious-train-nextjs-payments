@@ -103,7 +103,7 @@ const ChatList = ({ loggedInUser, users }: ChatListProps) => {
   return (
     <div>
       <h1>Logged in as: {loggedInUser.username}</h1>
-      <h2>Selected User {selectedUser?.name}</h2>
+      <h2>Messaging: {selectedUser?.name}</h2>
       <div className="flex gap-6">
         <div className="flex flex-col gap-1">
           {users.map(
@@ -111,7 +111,10 @@ const ChatList = ({ loggedInUser, users }: ChatListProps) => {
               user.email !== loggedInUser.email && (
                 <Button
                   key={user.email}
-                  onClick={() => setSelectedUser(user)}
+                  onClick={() => {
+                    setSelectedUser(user);
+                    setCurrentConversationId("");
+                  }}
                   variant="outline"
                   className={cn(
                     "w-full justify-start",
@@ -126,8 +129,8 @@ const ChatList = ({ loggedInUser, users }: ChatListProps) => {
         </div>
         <div className="flex-1 h-[calc(100vh-20rem)] flex flex-col gap-4">
           {/* Previous messages area */}
-          <ScrollArea className="flex-1 border rounded-md">
-            <div className="flex flex-col  gap-2 p-4">
+          <ScrollArea className="flex-1 border rounded-md h-full">
+            <div className="flex flex-col  gap-2 p-4 h-full justify-end">
               {allMessages.map((message) => (
                 <div
                   key={message.id}
@@ -139,9 +142,9 @@ const ChatList = ({ loggedInUser, users }: ChatListProps) => {
                   <p
                     className={cn(
                       message.accountId === loggedInUser.id &&
-                        "bg-violet-700 text-white",
+                        "bg-black text-white",
                       message.accountId !== loggedInUser.id && "bg-gray-300",
-                      "p-2 rounded m-0",
+                      "p-2 rounded-md m-0",
                     )}
                   >
                     {message.content}
