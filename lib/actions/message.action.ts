@@ -1,15 +1,46 @@
 "use server";
 
 import db from "@/db";
+import Pusher from "pusher";
 import {
   accounts,
   conversationParticipants,
   conversations,
   messages,
 } from "@/db/schema";
-import { desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
+
+// Instantiate the pusher
+const pusher = new Pusher({
+  appId: process.env.PUSHER_APP_ID!, // Pusher app identifier (server side only)
+  key: process.env.NEXT_PUBLIC_PUSHER_KEY!, // Public key, used by browser to connect
+  secret: process.env.PUSHER_SECRET!, // secret key, server side only, used to authenticate events
+  cluster: process.env.NEXT_PUBLIC_PUSHER_CLUSTER!,
+  useTLS: true, // Ensures communication is encrypted over HTTPS/WSS
+});
 
 export async function createMessage() {}
+
+export async function getMessagesByUserId(userId: string) {
+  try {
+    const storedMessages = await db
+      .select()
+      .from(messages)
+      .where(eq(messages.accountId, userId))
+      .limit(10)
+      .orderBy(desc(messages.createdAt));
+
+    if (!storedMessages) throw new Error("No messages found");
+
+    // Send all the messages back to the client based on what the conversation id is
+    return JSON.parse(JSON.stringify(storedMessages));
+  } catch (error) {
+    throw new Error(
+      error instanceof Error ? error.message : "Internal server error",
+    );
+  }
+}
 
 export async function getMessages(conversationId: string) {
   try {
@@ -18,7 +49,7 @@ export async function getMessages(conversationId: string) {
       .from(messages)
       .where(eq(messages.conversationId, conversationId))
       .limit(10)
-      .orderBy(desc(messages.createdAt));
+      .orderBy(asc(messages.createdAt));
 
     if (!storedMessages) throw new Error("No messages found");
 
@@ -57,31 +88,21 @@ export async function sendMessage({
     if (!sender || !receiver) throw new Error("Sender or receiver not found");
 
     // Check if these accounts are participating for the first time
-    const participantSender = await db
-      .select()
-      .from(conversationParticipants)
-      .where(eq(conversationParticipants.accountId, sender[0].id));
+    const cp1 = alias(conversationParticipants, "cp1");
+    const cp2 = alias(conversationParticipants, "cp2");
 
-    const participantReceiver = await db
-      .select()
-      .from(conversationParticipants)
-      .where(eq(conversationParticipants.accountId, receiver[0].id));
+    const [existingConversation] = await db
+      .select({ conversationId: cp1.conversationId })
+      .from(cp1)
+      .innerJoin(cp2, eq(cp1.conversationId, cp2.conversationId))
+      .where(
+        and(eq(cp1.accountId, sender[0].id), eq(cp2.accountId, receiver[0].id)),
+      );
 
-    console.log(
-      "Participant sender and receiver are",
-      participantSender,
-      participantReceiver,
-    );
-
-    if (
-      participantReceiver &&
-      participantReceiver.length > 0 &&
-      participantSender &&
-      participantSender.length > 0
-    ) {
+    if (existingConversation) {
       console.log("no need to create a new conversation");
       // They have already conversed before so need to get the conversation id from the conversation participants table
-      const conversationId = participantSender[0].conversationId;
+      const conversationId = existingConversation.conversationId;
       const [insertedMessage] = await db
         .insert(messages)
         .values({
@@ -99,6 +120,15 @@ export async function sendMessage({
         .from(messages)
         .where(eq(messages.conversationId, conversationId));
       console.log("Messages are", allMessages);
+      await pusher.trigger(`${"chat-" + conversationId}`, "new-message", {
+        accountId: sender[0].id,
+        content: content,
+        conversationId: conversationId,
+        id: insertedMessage.id,
+        isRead: false,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      });
       return {
         message: "Message sent successfully",
         conversationId: conversationId,
@@ -133,6 +163,16 @@ export async function sendMessage({
         .returning({
           id: messages.id,
         });
+
+      await pusher.trigger(`${"chat-" + conversation.id}`, "new-message", {
+        accountId: sender[0].id,
+        content: content,
+        conversationId: conversation.id,
+        id: insertedMessage.id,
+        isRead: false,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      });
 
       return {
         conversationId: JSON.parse(JSON.stringify(conversation.id)),

@@ -8,4 +8,10 @@ type Message = {
   updatedAt: string;
 };
 
+type PusherMessage = {
+  sender: string;
+  receiver: string;
+  message: string;
+};
+
 type Messages = Message[];

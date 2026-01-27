@@ -1,11 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "../ui/button";
 import { cn } from "@/lib/utils";
 import { Textarea } from "../ui/textarea";
-import { getMessages, sendMessage } from "@/lib/actions/message.action";
+import {
+  getMessages,
+  getMessagesByUserId,
+  sendMessage,
+} from "@/lib/actions/message.action";
 import { ScrollArea } from "../ui/scroll-area";
+import Pusher from "pusher-js";
+import { getConversationId } from "@/lib/actions/conversation.action";
 
 interface ChatListProps {
   loggedInUser: {
@@ -21,6 +27,7 @@ interface ChatListProps {
 }
 
 const ChatList = ({ loggedInUser, users }: ChatListProps) => {
+  const pusherRef = useRef<Pusher | null>(null);
   const [selectedUser, setSelectedUser] = useState<{
     email: string;
     name: string;
@@ -28,6 +35,53 @@ const ChatList = ({ loggedInUser, users }: ChatListProps) => {
   } | null>(users[0]);
   const [messageToSend, setMessageToSend] = useState<string>("");
   const [allMessages, setAllMessages] = useState<Messages>([]);
+  const [currentConversationId, setCurrentConversationId] =
+    useState<string>("");
+
+  useEffect(() => {
+    if (!currentConversationId) return;
+    if (!pusherRef.current) {
+      pusherRef.current = new Pusher(process.env.NEXT_PUBLIC_PUSHER_KEY!, {
+        cluster: process.env.NEXT_PUBLIC_PUSHER_CLUSTER!,
+      });
+    }
+
+    const channelName = `chat-${currentConversationId}`;
+    console.log("this is the channel name", channelName);
+
+    const channel = pusherRef.current.subscribe(channelName);
+
+    channel.bind("new-message", (data: Message) => {
+      setAllMessages((prev) => [...prev, data]);
+    });
+
+    return () => {
+      channel.unbind_all();
+      pusherRef?.current?.unsubscribe(channelName);
+    };
+  }, [currentConversationId]);
+
+  useEffect(() => {
+    const fetchConversationId = async () => {
+      const conversationId = await getConversationId({
+        senderId: loggedInUser.id,
+        receiverId: selectedUser!.id,
+      });
+      console.log("Conversation ID", conversationId);
+      setCurrentConversationId(conversationId);
+    };
+    fetchConversationId();
+  }, [loggedInUser, selectedUser]);
+
+  // Need to fetch the initial messages when the component mounts and the user selects a particular user
+  useEffect(() => {
+    const fetchMessages = async () => {
+      if (!currentConversationId) return;
+      const messages = await getMessages(currentConversationId);
+      setAllMessages(messages);
+    };
+    fetchMessages();
+  }, [currentConversationId]);
 
   const handleSend = async () => {
     console.log("Handling send", loggedInUser.email, selectedUser?.email);
@@ -41,18 +95,15 @@ const ChatList = ({ loggedInUser, users }: ChatListProps) => {
 
     // As soon as sending the message we need to get the message and then append it in the UI
     const { conversationId } = data;
-    const messages = await getMessages(conversationId);
-    setAllMessages(messages);
+    setCurrentConversationId(conversationId);
+    // const messages = await getMessages(conversationId);
+    // setAllMessages(messages);
   };
 
   return (
     <div>
-      <h1>
-        Logged in as: {loggedInUser.username} {loggedInUser.id}
-      </h1>
-      <h2>
-        Selected User {selectedUser?.name} {selectedUser?.id}
-      </h2>
+      <h1>Logged in as: {loggedInUser.username}</h1>
+      <h2>Selected User {selectedUser?.name}</h2>
       <div className="flex gap-6">
         <div className="flex flex-col gap-1">
           {users.map(
@@ -76,7 +127,7 @@ const ChatList = ({ loggedInUser, users }: ChatListProps) => {
         <div className="flex-1 h-[calc(100vh-20rem)] flex flex-col gap-4">
           {/* Previous messages area */}
           <ScrollArea className="flex-1 border rounded-md">
-            <div className="flex flex-col gap-2 p-4">
+            <div className="flex flex-col  gap-2 p-4">
               {allMessages.map((message) => (
                 <div
                   key={message.id}
