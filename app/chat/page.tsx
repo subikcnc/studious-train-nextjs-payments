@@ -7,7 +7,7 @@ const ChatPage = async () => {
 
   console.log("response in chat", data);
   return (
-    <div className="container mx-auto py-8">
+    <div className="w-full h-screen">
       <ChatList loggedInUser={data} users={allUsers} />{" "}
     </div>
   );

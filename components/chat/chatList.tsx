@@ -1,17 +1,14 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "../ui/button";
 import { cn } from "@/lib/utils";
 import { Textarea } from "../ui/textarea";
-import {
-  getMessages,
-  getMessagesByUserId,
-  sendMessage,
-} from "@/lib/actions/message.action";
+import { getMessages, sendMessage } from "@/lib/actions/message.action";
 import { ScrollArea } from "../ui/scroll-area";
 import Pusher from "pusher-js";
 import { getConversationId } from "@/lib/actions/conversation.action";
+import { sendTypingStatus } from "@/lib/actions/typing.action";
 
 interface ChatListProps {
   loggedInUser: {
@@ -37,6 +34,57 @@ const ChatList = ({ loggedInUser, users }: ChatListProps) => {
   const [allMessages, setAllMessages] = useState<Messages>([]);
   const [currentConversationId, setCurrentConversationId] =
     useState<string>("");
+  const [isCurrentlyTyping, setIsCurrentlyTyping] = useState<boolean>(false);
+  const [lastTypedAt, setLastTypedAt] = useState<Date | null>(null);
+  const [showTypingIndicator, setShowTypingIndicator] =
+    useState<boolean>(false);
+
+  function throttle(fn, delay: number) {
+    let lastCall = 0;
+    return (...args: any[]) => {
+      const now = Date.now();
+      if (now - lastCall >= delay) {
+        lastCall = now;
+        fn(...args);
+      }
+    };
+  }
+  const throttledStatusUpdate = useMemo(
+    () => throttle(sendTypingStatus, 1500),
+    [],
+  );
+
+  // Another useEffect to check if isCurrentlyTyping is true to then broadcast the message to pusher
+  useEffect(() => {
+    if (isCurrentlyTyping) {
+      // Now we need to delay calling the server action below
+      if (!currentConversationId) return;
+      console.log("Calling the server action when status is typing");
+      throttledStatusUpdate({
+        conversationId: currentConversationId,
+        status: "typing",
+      });
+    } else {
+      sendTypingStatus({
+        conversationId: currentConversationId,
+        status: "stopped",
+      });
+    }
+  }, [
+    isCurrentlyTyping,
+    currentConversationId,
+    lastTypedAt,
+    throttledStatusUpdate,
+  ]);
+
+  // This useeffect to handle the typing status
+  useEffect(() => {
+    const delayDebounceFn = setTimeout(() => {
+      setIsCurrentlyTyping(false);
+    }, 1500);
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [isCurrentlyTyping, lastTypedAt]);
 
   useEffect(() => {
     if (!currentConversationId) return;
@@ -101,11 +149,10 @@ const ChatList = ({ loggedInUser, users }: ChatListProps) => {
   };
 
   return (
-    <div>
-      <h1>Logged in as: {loggedInUser.username}</h1>
-      <h2>Messaging: {selectedUser?.name}</h2>
-      <div className="flex gap-6">
-        <div className="flex flex-col gap-1">
+    <div className="w-full p-12 rounded-[16px] h-screen">
+      <div className="grid grid-cols-[1fr_2fr] h-full border border-chat-background">
+        <div className="flex flex-col gap-1 bg-chat-background">
+          <div className="px-5 py-6">{`${loggedInUser.username}'s Chat`}</div>
           {users.map(
             (user) =>
               user.email !== loggedInUser.email && (
@@ -117,51 +164,65 @@ const ChatList = ({ loggedInUser, users }: ChatListProps) => {
                   }}
                   variant="outline"
                   className={cn(
-                    "w-full justify-start",
+                    "w-full justify-start rounded-none border-0 px-5! py-2! cursor-pointer shadow-none bg-transparent",
                     selectedUser?.email === user.email &&
-                      "bg-black text-white hover:bg-black hover:text-white",
+                      "bg-chat-active-background text-black hover:bg-chat-active-background hover:text-black",
                   )}
                 >
-                  {user.name}
+                  <span className="uppercase font-bold">{user.name}</span>
                 </Button>
               ),
           )}
         </div>
-        <div className="flex-1 h-[calc(100vh-20rem)] flex flex-col gap-4">
+        <div className="flex-1 flex flex-col gap-4">
           {/* Previous messages area */}
-          <ScrollArea className="flex-1 border rounded-md h-full">
-            <div className="flex flex-col  gap-2 p-4 h-full justify-end">
-              {allMessages.map((message) => (
-                <div
-                  key={message.id}
-                  className={cn(
-                    "flex gap-2",
-                    message.accountId === loggedInUser.id && "justify-end",
-                  )}
-                >
-                  <p
+          <div className="w-full px-5 py-6">
+            Messaging{" "}
+            <span className="font-bold uppercase">{selectedUser?.name}</span>
+          </div>
+          <div className="flex flex-col flex-1 px-5 gap-4">
+            <ScrollArea className="flex-1 border rounded-md h-full">
+              <div className="flex flex-col  gap-2 p-4 h-full justify-end">
+                {allMessages.map((message) => (
+                  <div
+                    key={message.id}
                     className={cn(
-                      message.accountId === loggedInUser.id &&
-                        "bg-black text-white",
-                      message.accountId !== loggedInUser.id && "bg-gray-300",
-                      "p-2 rounded-md m-0",
+                      "flex gap-2",
+                      message.accountId === loggedInUser.id && "justify-end",
                     )}
                   >
-                    {message.content}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </ScrollArea>
-          <Textarea
-            className="h-[10%]"
-            placeholder={`Message ${selectedUser?.name}`}
-            value={messageToSend}
-            onChange={(e) => setMessageToSend(e.target.value)}
-          />
-          <Button className="self-end mt-4" onClick={handleSend}>
-            Send
-          </Button>
+                    <p
+                      className={cn(
+                        message.accountId === loggedInUser.id &&
+                          "bg-chat-bubble-background text-black",
+                        message.accountId !== loggedInUser.id && "bg-gray-300",
+                        "p-2 rounded-md m-0",
+                      )}
+                    >
+                      {message.content}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </ScrollArea>
+            <Textarea
+              className="h-[10%]"
+              placeholder={`Message ${selectedUser?.name}`}
+              value={messageToSend}
+              onInput={() => {
+                setIsCurrentlyTyping(true);
+                setLastTypedAt(new Date());
+                // throttledHandler.current();
+              }}
+              onChange={(e) => setMessageToSend(e.target.value)}
+            />
+            <Button
+              className="self-end mt-4 bg-chat-bubble-background text-black"
+              onClick={handleSend}
+            >
+              Send
+            </Button>
+          </div>
         </div>
       </div>
     </div>

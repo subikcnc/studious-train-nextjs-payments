@@ -1,7 +1,6 @@
 "use server";
 
 import db from "@/db";
-import Pusher from "pusher";
 import {
   accounts,
   conversationParticipants,
@@ -10,15 +9,7 @@ import {
 } from "@/db/schema";
 import { and, asc, desc, eq } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
-
-// Instantiate the pusher
-const pusher = new Pusher({
-  appId: process.env.PUSHER_APP_ID!, // Pusher app identifier (server side only)
-  key: process.env.NEXT_PUBLIC_PUSHER_KEY!, // Public key, used by browser to connect
-  secret: process.env.PUSHER_SECRET!, // secret key, server side only, used to authenticate events
-  cluster: process.env.NEXT_PUBLIC_PUSHER_CLUSTER!,
-  useTLS: true, // Ensures communication is encrypted over HTTPS/WSS
-});
+import { pusher } from "../utils/pusher";
 
 export async function createMessage() {}
 
