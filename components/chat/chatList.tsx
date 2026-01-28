@@ -25,6 +25,7 @@ interface ChatListProps {
 
 const ChatList = ({ loggedInUser, users }: ChatListProps) => {
   const pusherRef = useRef<Pusher | null>(null);
+  const pusherTypingRef = useRef<Pusher | null>(null);
   const [selectedUser, setSelectedUser] = useState<{
     email: string;
     name: string;
@@ -53,6 +54,28 @@ const ChatList = ({ loggedInUser, users }: ChatListProps) => {
     () => throttle(sendTypingStatus, 1500),
     [],
   );
+
+  // This effect is for showing a typing indicator
+  useEffect(() => {
+    if (!pusherTypingRef.current) {
+      pusherTypingRef.current = new Pusher(
+        process.env.NEXT_PUBLIC_PUSHER_KEY!,
+        {
+          cluster: process.env.NEXT_PUBLIC_PUSHER_CLUSTER!,
+        },
+      );
+    }
+    const channel = pusherTypingRef.current.subscribe(
+      `chat-${currentConversationId}`,
+    );
+    channel.bind("typing", (data: { typing: "typing" | "stopped" }) => {
+      setShowTypingIndicator(data.typing === "typing");
+    });
+    return () => {
+      channel.unbind_all();
+      pusherTypingRef?.current?.unsubscribe(`chat-${currentConversationId}`);
+    };
+  }, [currentConversationId]);
 
   // Another useEffect to check if isCurrentlyTyping is true to then broadcast the message to pusher
   useEffect(() => {
@@ -152,7 +175,10 @@ const ChatList = ({ loggedInUser, users }: ChatListProps) => {
     <div className="w-full p-12 rounded-[16px] h-screen">
       <div className="grid grid-cols-[1fr_2fr] h-full border border-chat-background">
         <div className="flex flex-col gap-1 bg-chat-background">
-          <div className="px-5 py-6">{`${loggedInUser.username}'s Chat`}</div>
+          <div className="px-5 py-6">
+            {`${loggedInUser.username}'s Chat`}{" "}
+            {/* {showTypingIndicator && "is typing"} */}
+          </div>
           {users.map(
             (user) =>
               user.email !== loggedInUser.email && (
@@ -203,6 +229,11 @@ const ChatList = ({ loggedInUser, users }: ChatListProps) => {
                     </p>
                   </div>
                 ))}
+                {showTypingIndicator && loggedInUser.id && (
+                  <div className="flex gap-2">
+                    <span className="text-xs text-gray-500">is typing...</span>
+                  </div>
+                )}
               </div>
             </ScrollArea>
             <Textarea
