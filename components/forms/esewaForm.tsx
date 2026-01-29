@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Button } from "../ui/button";
 
 const EsewaForm = () => {
-  const [txnId, setTxnId] = useState<string>("txn_0016");
+  const [txnId, setTxnId] = useState<string>("txn_0019");
   const handleSubmit = async () => {
     try {
       // Call backend to get signed payload
@@ -22,7 +22,7 @@ const EsewaForm = () => {
           product_service_charge: "0",
           product_delivery_charge: "0",
           success_url: `${process.env.NEXT_PUBLIC_APP_URL}/success`,
-          failure_url: `${process.env.NEXT_PUBLIC_APP_URL}/failure`,
+          failure_url: `${process.env.NEXT_PUBLIC_APP_URL}/failure?transaction_uuid=${txnId}&product_code=EPAYTEST&total_amount=500`,
         }),
       });
       const data = await res.json();
@@ -57,7 +57,7 @@ const EsewaForm = () => {
 };
 
 export default EsewaForm;
-
+// https://rc.esewa.com.np/api/epay/transaction/status/?product_code=EPAYTEST&total_amount=100&transaction_uuid=123
 /*
 {
     "order": {

@@ -48,7 +48,7 @@ const KhaltiForm = () => {
       });
       const data = await response.json();
 
-      //   We assume everything goes     right so we proceed
+      //   We assume everything goes right so we proceed
       console.log(data);
       const { pidx, payment_url } = data;
 

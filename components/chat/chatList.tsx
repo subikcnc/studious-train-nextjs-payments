@@ -9,6 +9,7 @@ import { ScrollArea } from "../ui/scroll-area";
 import Pusher from "pusher-js";
 import { getConversationId } from "@/lib/actions/conversation.action";
 import { sendTypingStatus } from "@/lib/actions/typing.action";
+import { TypingIndicator } from "./typingIndicator";
 
 interface ChatListProps {
   loggedInUser: {
@@ -68,14 +69,19 @@ const ChatList = ({ loggedInUser, users }: ChatListProps) => {
     const channel = pusherTypingRef.current.subscribe(
       `chat-${currentConversationId}`,
     );
-    channel.bind("typing", (data: { typing: "typing" | "stopped" }) => {
-      setShowTypingIndicator(data.typing === "typing");
-    });
+    channel.bind(
+      "typing",
+      (data: { typing: "typing" | "stopped"; senderId: string }) => {
+        setShowTypingIndicator(
+          data.typing === "typing" && data.senderId !== loggedInUser.id,
+        );
+      },
+    );
     return () => {
       channel.unbind_all();
       pusherTypingRef?.current?.unsubscribe(`chat-${currentConversationId}`);
     };
-  }, [currentConversationId]);
+  }, [currentConversationId, loggedInUser.id]);
 
   // Another useEffect to check if isCurrentlyTyping is true to then broadcast the message to pusher
   useEffect(() => {
@@ -86,11 +92,13 @@ const ChatList = ({ loggedInUser, users }: ChatListProps) => {
       throttledStatusUpdate({
         conversationId: currentConversationId,
         status: "typing",
+        senderId: loggedInUser.id,
       });
     } else {
       sendTypingStatus({
         conversationId: currentConversationId,
         status: "stopped",
+        senderId: loggedInUser.id,
       });
     }
   }, [
@@ -98,6 +106,7 @@ const ChatList = ({ loggedInUser, users }: ChatListProps) => {
     currentConversationId,
     lastTypedAt,
     throttledStatusUpdate,
+    loggedInUser.id,
   ]);
 
   // This useeffect to handle the typing status
@@ -231,7 +240,7 @@ const ChatList = ({ loggedInUser, users }: ChatListProps) => {
                 ))}
                 {showTypingIndicator && loggedInUser.id && (
                   <div className="flex gap-2">
-                    <span className="text-xs text-gray-500">is typing...</span>
+                    <TypingIndicator />
                   </div>
                 )}
               </div>
