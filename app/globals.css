@@ -162,6 +162,37 @@
       opacity: 0.2;
     }
   }
+
+  /* funnyTypingIndicator.css */
+  .funny-typing-indicator {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 1rem;
+    font-weight: 500;
+    color: #555;
+  }
+
+  .typing-username {
+    font-style: italic;
+  }
+
+  .typing-emoji {
+    display: inline-block;
+    animation: bounce 0.5s infinite alternate;
+  }
+
+  @keyframes bounce {
+    0% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-4px);
+    }
+    100% {
+      transform: translateY(0);
+    }
+  }
 }
 
 @layer utilities {

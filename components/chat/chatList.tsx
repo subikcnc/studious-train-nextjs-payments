@@ -10,6 +10,7 @@ import Pusher from "pusher-js";
 import { getConversationId } from "@/lib/actions/conversation.action";
 import { sendTypingStatus } from "@/lib/actions/typing.action";
 import { TypingIndicator } from "./typingIndicator";
+import { FunnyTypingIndicator } from "./funnyTypingIndicator";
 
 interface ChatListProps {
   loggedInUser: {
@@ -240,7 +241,7 @@ const ChatList = ({ loggedInUser, users }: ChatListProps) => {
                 ))}
                 {showTypingIndicator && loggedInUser.id && (
                   <div className="flex gap-2">
-                    <TypingIndicator />
+                    <FunnyTypingIndicator username={selectedUser?.name} />
                   </div>
                 )}
               </div>
